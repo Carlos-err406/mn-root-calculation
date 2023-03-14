@@ -1,17 +1,19 @@
-from sympy import simplify, diff, Expr, Derivative
-from sympy.abc import x as X
-
+from sympy import simplify, diff, Expr, Derivative, symbols
 from src.utils import bolzano
 
+x, y = symbols('x y')
+MAX_ITERATIONS = 1000
 
-def bisection(function, a, b, tolerance):
+
+def bisection(function: Expr, a, b, tolerance):
     if not bolzano(function, a, b):
-        raise Exception(
-            f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        print(f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        return None
     iteration = 1
     simplified = simplify(function)
     results = {}
-    while True:
+    while iteration <= MAX_ITERATIONS:
+        # Compute the midpoint of the interval
         middle = (a + b) / 2
         error = abs(a - b) / 2
         results[iteration] = {
@@ -21,107 +23,107 @@ def bisection(function, a, b, tolerance):
             "error": error
         }
         iteration += 1
-        function_middle = simplified.subs(X, middle)
-        if function_middle == 0 or error <= abs(tolerance):
+        # Check if the tolerance has been reached
+        if error <= abs(tolerance):
             break
-        elif bolzano(simplified, a, middle):
+        elif bolzano(simplified, a, middle):  # Update the interval
             b = middle
         else:
             a = middle
     return results
 
 
-def newton_raphson(function, a, b, tolerance):
+def newton_raphson(function: Expr, a, b, tolerance):
     if not bolzano(function, a, b):
-        raise Exception(
-            f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        print(f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        return None
 
     def select(expression: Expr, derivative: Derivative, a, b):
-        function_a = expression.subs(X, a)
-        derivative_a = derivative.subs(X, a)
+        function_a = expression.subs(x, a)
+        derivative_a = derivative.subs(x, a)
         return a if function_a * derivative_a > 0 else b
 
     simplified = simplify(function)
-    derivative_x = diff(simplified, X)
+    derivative_x = diff(simplified, x)
     results = {}
+    # Determine initial guess x0
     n = select(simplified, derivative_x, a, b)
     iteration = 1
-    while True:
-        function_n = simplified.subs(X, n)
-        derivative_n = derivative_x.subs(X, n)
+    while iteration <= MAX_ITERATIONS:
+        function_n = simplified.subs(x, n)
+        derivative_n = derivative_x.subs(x, n)
         m = float(n - function_n / derivative_n)
-        error = abs(m - n) if iteration > 1 else (b - a) / 2
+        error = abs(m - n) if iteration > 1 else None
         results[iteration] = {
             "a": a,
             "b": b,
             "x": float(m),
             "error": error
         }
-        iteration += 1
-        if error <= tolerance:
+        if iteration > 1 and (error <= tolerance):
             break
         n = m
+        iteration += 1
     return results
 
 
 def regula_falsi(function: Expr, a, b, tolerance):
     if not bolzano(function, a, b):
-        raise Exception(
-            f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        print(f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        return None
     results = {}
     iteration = 1
     simplified = simplify(function)
     m = 0
-    while True:
-        function_a = float(simplified.subs(X, a))
-        function_b = float(simplified.subs(X, b))
-        f_difference = function_b - function_a
-        v_difference = b - a
-        n = a - (v_difference / f_difference) * function_a
-        error = abs(n - m) if iteration > 1 else abs((b - a) / 2)
+    while iteration <= MAX_ITERATIONS:
+        function_a = float(simplified.subs(x, a))
+        function_b = float(simplified.subs(x, b))
+        n = float(a - ((b - a) / (function_b - function_a)) * function_a)
+        error = float(abs(n - m)) if iteration > 1 else None
         results[iteration] = {
             "a": float(a),
             "b": float(b),
             "x": float(n),
-            "error": float(error)
+            "error": error
         }
-        iteration += 1
-        if error < tolerance:
+        function_n = simplified.subs(x, n)
+        if function_n == 0 or (iteration > 1 and error < tolerance):
             break
         elif bolzano(function, a, n):
             b = n
         else:
             a = n
         m = n
+        iteration += 1
     return results
 
 
 def secant(function: Expr, a, b, tolerance):
     if not bolzano(function, a, b):
-        raise Exception(
-            f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        print(f"invalid initial interval -> bolzano does not apply in this interval [{min(a, b)};{max(a, b)}]")
+        return None
     results = {}
     iteration = 1
     simplified = simplify(function)
-    function_a = simplified.subs(X, a)
-    function_b = simplified.subs(X, b)
+    function_a = simplified.subs(x, a)
+    function_b = simplified.subs(x, b)
 
-    while True:
-        n = b - ((b - a) / (function_b - function_a) * function_b)
-        function_c = simplified.subs(X, n)
-        error = abs(function_c - b)
+    while iteration <= MAX_ITERATIONS:
+        n = float(b - ((b - a) / (function_b - function_a)) * function_b)
+        error = abs(n - b)
         results[iteration] = {
             "a": float(a),
             "b": float(b),
-            "x": float(function_c),
+            "x": float(n),
             "error": float(error),
         }
         if error <= tolerance:
             break
-        # a -> b; b -> c; forget a
+        function_n = simplified.subs(x, n)
+        # a -> b; b -> n; forget a
         a = b
         function_a = function_b
-        b = function_c
-        function_b = function_c
+        b = n
+        function_b = function_n
         iteration += 1
     return results
