@@ -17,7 +17,7 @@ def bisection(function, a, b, tolerance):
         results[iteration] = {
             "a": a,
             "b": b,
-            "middle": middle,
+            "x": middle,
             "error": error
         }
         iteration += 1
@@ -73,8 +73,8 @@ def regula_falsi(function: Expr, a, b, tolerance):
     simplified = simplify(function)
     m = 0
     while True:
-        function_a = simplified.subs(X, a)
-        function_b = simplified.subs(X, b)
+        function_a = float(simplified.subs(X, a))
+        function_b = float(simplified.subs(X, b))
         f_difference = function_b - function_a
         v_difference = b - a
         n = a - (v_difference / f_difference) * function_a
